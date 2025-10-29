@@ -3,6 +3,91 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* Professional Color Palette */
+  --color-primary-50: #f0f9ff;
+  --color-primary-100: #e0f7fe;
+  --color-primary-200: #bae6fd;
+  --color-primary-300: #7dd3fc;
+  --color-primary-400: #38bdf8;
+  --color-primary-500: #0ea5e9;
+  --color-primary-600: #0284c7;
+  --color-primary-700: #0369a1;
+  --color-primary-800: #075985;
+  --color-primary-900: #0c4a6e;
+  
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f4f4f5;
+  --color-neutral-200: #e4e4e7;
+  --color-neutral-300: #d4d4d8;
+  --color-neutral-400: #a1a1aa;
+  --color-neutral-500: #71717a;
+  --color-neutral-600: #52525b;
+  --color-neutral-700: #3f3f46;
+  --color-neutral-800: #27272a;
+  --color-neutral-900: #18181b;
+  
+  --color-success-50: #f0fdf4;
+  --color-success-500: #10b981;
+  --color-success-700: #047857;
+  
+  --color-warning-50: #fffbeb;
+  --color-warning-500: #f59e0b;
+  --color-warning-700: #b45309;
+  
+  --color-error-50: #fef2f2;
+  --color-error-500: #ef4444;
+  --color-error-700: #b91c1c;
+  
+  /* Professional Shadows */
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-card-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-modal: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+/* Professional Dark Theme */
+:root.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  
+  --color-primary-50: #1e3a5f;
+  --color-primary-100: #1e40af;
+  --color-primary-200: #1d4ed8;
+  --color-primary-300: #2563eb;
+  --color-primary-400: #3b82f6;
+  --color-primary-500: #60a5fa;
+  --color-primary-600: #93c5fd;
+  --color-primary-700: #bfdbfe;
+  --color-primary-800: #dbeafe;
+  --color-primary-900: #eff6ff;
+  
+  --color-neutral-50: #0f172a;
+  --color-neutral-100: #1e293b;
+  --color-neutral-200: #334155;
+  --color-neutral-300: #475569;
+  --color-neutral-400: #64748b;
+  --color-neutral-500: #94a3b8;
+  --color-neutral-600: #cbd5e1;
+  --color-neutral-700: #e2e8f0;
+  --color-neutral-800: #f1f5f9;
+  --color-neutral-900: #f8fafc;
+  
+  --color-success-50: #064e3b;
+  --color-success-500: #10b981;
+  --color-success-700: #a7f3d0;
+  
+  --color-warning-50: #78350f;
+  --color-warning-500: #f59e0b;
+  --color-warning-700: #fde68a;
+  
+  --color-error-50: #7f1d1d;
+  --color-error-500: #ef4444;
+  --color-error-700: #fca5a5;
+  
+  /* Dark mode shadows */
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-card-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+  --shadow-modal: 0 25px 50px -12px rgb(0 0 0 / 0.4);
 }
 
 @theme inline {
@@ -12,15 +97,88 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Smooth Animations */
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes slideUp {
+  0% { 
+    transform: translateY(20px) scale(0.95); 
+    opacity: 0; 
   }
+  100% { 
+    transform: translateY(0) scale(1); 
+    opacity: 1; 
+  }
+}
+
+@keyframes slideDown {
+  0% { 
+    transform: translateY(-20px) scale(0.95); 
+    opacity: 0; 
+  }
+  100% { 
+    transform: translateY(0) scale(1); 
+    opacity: 1; 
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-slide-down {
+  animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Smooth theme transitions */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-neutral-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-400);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-500);
+}
+
+:root.dark ::-webkit-scrollbar-track {
+  background: var(--color-neutral-800);
+}
+
+:root.dark ::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-600);
+}
+
+:root.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-500);
 }
