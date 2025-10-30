@@ -1,14 +1,20 @@
 {
   "version": 2,
-  "buildCommand": "npm run build-storybook",
-  "outputDirectory": "storybook-static",
-  "devCommand": "npm run storybook",
-  "installCommand": "npm install",
-  "framework": null,
-  "rewrites": [
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "storybook-static"
+      }
     }
-  ]
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/storybook-static/$1"
+    }
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false
 }
