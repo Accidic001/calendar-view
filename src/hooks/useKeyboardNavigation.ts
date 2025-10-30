@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { CalendarEvent } from '@/components/Calendar/CalendarView.types';
 
 interface KeyboardNavigationState {
   focusedDate: Date | null;
@@ -7,7 +8,7 @@ interface KeyboardNavigationState {
 
 interface UseKeyboardNavigationProps {
   currentDate: Date;
-  events: any[];
+  events: CalendarEvent[];
   onDateSelect: (date: Date) => void;
   onEventSelect: (eventId: string) => void;
   onEventAction: (eventId: string) => void;
@@ -26,18 +27,16 @@ export const useKeyboardNavigation = ({
   });
 
   const gridRef = useRef<HTMLDivElement>(null);
+  const isInitialized = useRef(false);
 
-  // Get all dates in the current month view
   const getMonthGridDates = useCallback((): Date[] => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     
-    // Get calendar grid (6 weeks × 7 days)
     const dates: Date[] = [];
     const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - startDate.getDay()); // Start from Sunday
+    startDate.setDate(startDate.getDate() - startDate.getDay());
     
     for (let i = 0; i < 42; i++) {
       dates.push(new Date(startDate));
@@ -47,8 +46,7 @@ export const useKeyboardNavigation = ({
     return dates;
   }, [currentDate]);
 
-  // Get events for the focused date
-  const getFocusedDateEvents = useCallback((): any[] => {
+  const getFocusedDateEvents = useCallback((): CalendarEvent[] => {
     if (!state.focusedDate) return [];
     return events.filter(event => {
       const eventDate = new Date(event.startDate);
@@ -56,7 +54,6 @@ export const useKeyboardNavigation = ({
     });
   }, [state.focusedDate, events]);
 
-  // Navigate to next/previous date
   const navigateDate = useCallback((direction: 'left' | 'right' | 'up' | 'down') => {
     const dates = getMonthGridDates();
     const currentIndex = dates.findIndex(date => 
@@ -64,7 +61,6 @@ export const useKeyboardNavigation = ({
     );
 
     if (currentIndex === -1) {
-      // If no date focused, focus today or first day of month
       const todayIndex = dates.findIndex(date => date.toDateString() === new Date().toDateString());
       const newFocusedDate = todayIndex !== -1 ? dates[todayIndex] : dates[0];
       setState(prev => ({ ...prev, focusedDate: newFocusedDate, focusedEventId: null }));
@@ -72,20 +68,21 @@ export const useKeyboardNavigation = ({
       return;
     }
 
-    let newIndex = currentIndex;
+    const currentIndexValue = currentIndex;
+    let newIndex = currentIndexValue;
     
     switch (direction) {
       case 'left':
-        newIndex = currentIndex - 1;
+        newIndex = currentIndexValue - 1;
         break;
       case 'right':
-        newIndex = currentIndex + 1;
+        newIndex = currentIndexValue + 1;
         break;
       case 'up':
-        newIndex = currentIndex - 7;
+        newIndex = currentIndexValue - 7;
         break;
       case 'down':
-        newIndex = currentIndex + 7;
+        newIndex = currentIndexValue + 7;
         break;
     }
 
@@ -96,22 +93,21 @@ export const useKeyboardNavigation = ({
     }
   }, [state.focusedDate, getMonthGridDates, onDateSelect]);
 
-  // Navigate to next/previous event
   const navigateEvent = useCallback((direction: 'next' | 'previous') => {
     const focusedEvents = getFocusedDateEvents();
     if (focusedEvents.length === 0) return;
 
-    let currentIndex = focusedEvents.findIndex(event => event.id === state.focusedEventId);
+    const currentIndex = focusedEvents.findIndex(event => event.id === state.focusedEventId);
     
     if (currentIndex === -1) {
-      // Focus first event
       const firstEvent = focusedEvents[0];
       setState(prev => ({ ...prev, focusedEventId: firstEvent.id }));
       onEventSelect(firstEvent.id);
       return;
     }
 
-    let newIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+    const currentIndexValue = currentIndex;
+    const newIndex = direction === 'next' ? currentIndexValue + 1 : currentIndexValue - 1;
     
     if (newIndex >= 0 && newIndex < focusedEvents.length) {
       const newEvent = focusedEvents[newIndex];
@@ -120,7 +116,6 @@ export const useKeyboardNavigation = ({
     }
   }, [state.focusedEventId, getFocusedDateEvents, onEventSelect]);
 
-  // Handle key down events
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!state.focusedDate) return;
 
@@ -169,7 +164,6 @@ export const useKeyboardNavigation = ({
         break;
         
       case 'Tab':
-        // Let Tab work normally for accessibility
         break;
         
       default:
@@ -177,7 +171,6 @@ export const useKeyboardNavigation = ({
     }
   }, [state, navigateDate, navigateEvent, onDateSelect, onEventAction]);
 
-  // Focus management
   const focusDate = useCallback((date: Date) => {
     setState(prev => ({ ...prev, focusedDate: date, focusedEventId: null }));
   }, []);
@@ -186,17 +179,25 @@ export const useKeyboardNavigation = ({
     setState(prev => ({ ...prev, focusedEventId: eventId }));
   }, []);
 
-  // Auto-focus today on mount
   useEffect(() => {
+    if (isInitialized.current) return;
+
     const today = new Date();
     const dates = getMonthGridDates();
     const todayInGrid = dates.find(date => date.toDateString() === today.toDateString());
     
-    if (todayInGrid) {
-      setState(prev => ({ ...prev, focusedDate: todayInGrid }));
-    } else if (dates.length > 0) {
-      setState(prev => ({ ...prev, focusedDate: dates[0] }));
-    }
+    // Use setTimeout to avoid calling setState synchronously in useEffect
+    const timer = setTimeout(() => {
+      if (todayInGrid) {
+        setState(prev => ({ ...prev, focusedDate: todayInGrid }));
+      } else if (dates.length > 0) {
+        setState(prev => ({ ...prev, focusedDate: dates[0] }));
+      }
+
+      isInitialized.current = true;
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [getMonthGridDates]);
 
   return {

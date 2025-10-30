@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { CalendarState } from '@/components/Calendar/CalendarView.types';
+import { CalendarState, CalendarEvent } from '@/components/Calendar/CalendarView.types';
 import { navigateMonth, navigateWeek } from '@/utils/date.utils';
 import { startOfWeek } from 'date-fns';
 
@@ -42,7 +42,6 @@ export const useCalendar = (initialDate: Date = new Date()) => {
     setState(prev => ({ 
       ...prev, 
       view: newView,
-      // Reset to start of week when switching to week view
       currentDate: newView === 'week' ? startOfWeek(prev.currentDate) : prev.currentDate
     }));
   }, []);
@@ -57,7 +56,7 @@ export const useCalendar = (initialDate: Date = new Date()) => {
     }));
   }, []);
 
-  const openEditModal = useCallback((event: any) => {
+  const openEditModal = useCallback((event: CalendarEvent) => {
     setState(prev => ({
       ...prev,
       selectedEvent: event,

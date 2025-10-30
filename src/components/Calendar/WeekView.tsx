@@ -2,11 +2,9 @@ import React, { useMemo, useCallback, useRef, useEffect } from 'react';
 import { CalendarEvent } from './CalendarView.types';
 import { getWeekDays, formatDate, isToday, isSameDay } from '@/utils/date.utils';
 import { 
-  getEventsForDay, 
   getEventsForDayWithOverlap, 
   calculateEventTimePosition 
 } from '@/utils/event.utils';
-import { clsx } from 'clsx';
 import { useDragToCreate } from '@/hooks/useDragToCreate';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
@@ -19,8 +17,18 @@ interface WeekViewProps {
   onEventCreate: (date: Date, startHour: number, endHour: number) => void;
 }
 
-const timeSlots = Array.from({ length: 14 }, (_, i) => i + 7); // 7 AM to 8 PM
-const HOUR_HEIGHT = 48; // h-12 = 3rem = 48px
+interface EventPosition {
+  left: number;
+  width: number;
+}
+
+interface EventWithPosition {
+  event: CalendarEvent;
+  position: EventPosition;
+}
+
+const timeSlots = Array.from({ length: 14 }, (_, i) => i + 7);
+const HOUR_HEIGHT = 48;
 
 export const WeekView: React.FC<WeekViewProps> = ({
   currentDate,
@@ -45,7 +53,6 @@ export const WeekView: React.FC<WeekViewProps> = ({
     onDragCreate: onEventCreate,
   });
 
-  // Keyboard navigation
   const {
     focusedDate,
     focusedEventId,
@@ -70,7 +77,6 @@ export const WeekView: React.FC<WeekViewProps> = ({
     },
   });
 
-  // Get events for each day with overlap positioning
   const dayEventsWithOverlap = useMemo(() => {
     return weekDays.map(day => getEventsForDayWithOverlap(events, day));
   }, [weekDays, events]);
@@ -87,7 +93,6 @@ export const WeekView: React.FC<WeekViewProps> = ({
     endDrag(hour);
   }, [endDrag]);
 
-  // Add global mouse up listener to cancel drag if mouse leaves grid
   useEffect(() => {
     const handleGlobalMouseUp = () => {
       if (isDragging) {
@@ -154,11 +159,15 @@ export const WeekView: React.FC<WeekViewProps> = ({
     focusDate(day);
   }, [focusDate]);
 
-  // Render event with proper positioning for overlaps
-  const renderEvent = useCallback((eventWithPosition: { event: CalendarEvent; position: any }, dayIndex: number) => {
+  const renderEvent = useCallback((eventWithPosition: EventWithPosition) => {
     const { event, position } = eventWithPosition;
     const timePosition = calculateEventTimePosition(event, HOUR_HEIGHT);
     const isFocused = focusedEventId === event.id;
+    
+    const eventClasses = [
+      "absolute rounded px-2 py-1 text-[10px] text-white cursor-pointer hover:opacity-90 transition-all duration-200 shadow-sm z-10 font-medium truncate focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-1",
+      isFocused ? "ring-2 ring-white ring-offset-1" : ""
+    ].filter(Boolean).join(" ");
     
     return (
       <div
@@ -166,10 +175,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
         role="button"
         tabIndex={0}
         aria-label={`Event: ${event.title}. ${formatDate(new Date(event.startDate), 'h:mma')} to ${formatDate(new Date(event.endDate), 'h:mma')}`}
-        className={clsx(
-          "absolute rounded px-2 py-1 text-[10px] text-white cursor-pointer hover:opacity-90 transition-all duration-200 shadow-sm z-10 font-medium truncate focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-1",
-          isFocused && "ring-2 ring-white ring-offset-1"
-        )}
+        className={eventClasses}
         style={{
           backgroundColor: event.color || '#3b82f6',
           top: `${timePosition.top}px`,
@@ -198,12 +204,26 @@ export const WeekView: React.FC<WeekViewProps> = ({
 
   return (
     <div className="bg-white dark:bg-[var(--color-neutral-800)] rounded-lg overflow-hidden border border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)]">
-      {/* Weekday Headers */}
       <div className="grid grid-cols-8 border-b border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)] bg-[var(--color-neutral-50)] dark:bg-[var(--color-neutral-700)]">
         <div className="p-3 border-r border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)]"></div>
         {weekDays.map(day => {
           const isDayFocused = focusedDate ? isSameDay(day, focusedDate) : false;
           const isDaySelected = selectedDate ? isSameDay(day, selectedDate) : false;
+          const isCurrentDay = isToday(day);
+          
+          const dateHeaderClasses = [
+            'p-3 text-center cursor-pointer transition-colors border-r border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)] last:border-r-0 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:z-10',
+            isCurrentDay && 'bg-[var(--color-primary-50)] dark:bg-[var(--color-primary-900)]',
+            isDaySelected && 'bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-800)]',
+            isDayFocused && !isDaySelected && 'ring-2 ring-[var(--color-primary-500)]'
+          ].filter(Boolean).join(" ");
+          
+          const dateNumberClasses = [
+            'text-sm font-semibold mt-1',
+            isCurrentDay 
+              ? 'text-[var(--color-primary-600)] dark:text-[var(--color-primary-400)]' 
+              : 'text-[var(--color-neutral-900)] dark:text-[var(--color-neutral-100)]'
+          ].filter(Boolean).join(" ");
           
           return (
             <div
@@ -211,12 +231,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
               role="button"
               tabIndex={0}
               aria-label={`${formatDate(day, 'EEEE, MMMM d')}. Click to select date.`}
-              className={clsx(
-                'p-3 text-center cursor-pointer transition-colors border-r border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)] last:border-r-0 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:z-10',
-                isToday(day) && 'bg-[var(--color-primary-50)] dark:bg-[var(--color-primary-900)]',
-                isDaySelected && 'bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-800)]',
-                isDayFocused && !isDaySelected && 'ring-2 ring-[var(--color-primary-500)]'
-              )}
+              className={dateHeaderClasses}
               onClick={() => handleDateHeaderClick(day)}
               onFocus={() => handleDateHeaderFocus(day)}
               onKeyDown={(e) => {
@@ -229,12 +244,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
               <div className="text-xs font-medium text-[var(--color-neutral-600)] dark:text-[var(--color-neutral-300)] uppercase tracking-wide">
                 {formatDate(day, 'EEE')}
               </div>
-              <div className={clsx(
-                'text-sm font-semibold mt-1',
-                isToday(day) 
-                  ? 'text-[var(--color-primary-600)] dark:text-[var(--color-primary-400)]' 
-                  : 'text-[var(--color-neutral-900)] dark:text-[var(--color-neutral-100)]'
-              )}>
+              <div className={dateNumberClasses}>
                 {formatDate(day, 'd')}
               </div>
             </div>
@@ -242,7 +252,6 @@ export const WeekView: React.FC<WeekViewProps> = ({
         })}
       </div>
 
-      {/* Time Slots Grid with Drag Support */}
       <div 
         ref={keyboardGridRef}
         className="flex max-h-[480px] overflow-y-auto relative"
@@ -254,7 +263,6 @@ export const WeekView: React.FC<WeekViewProps> = ({
         role="application"
         aria-label="Calendar week view. Use arrow keys to navigate, Enter or Space to select."
       >
-        {/* Time Labels */}
         <div className="w-16 shrink-0 bg-[var(--color-neutral-50)] dark:bg-[var(--color-neutral-700)] sticky left-0 z-10">
           {timeSlots.map(hour => (
             <div
@@ -267,27 +275,26 @@ export const WeekView: React.FC<WeekViewProps> = ({
           ))}
         </div>
 
-        {/* Day Columns with Event Containers */}
         <div className="grid grid-cols-7 flex-1 min-w-0 relative">
-          {weekDays.map((day, dayIndex) => (
+          {weekDays.map((day) => (
             <div key={day.toISOString()} className="border-l border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)] last:border-r-0 relative">
-              {/* Time slots for drag interactions */}
               {timeSlots.map(hour => {
                 const isInDragRange = isDragging && dragRange && dragDate && isSameDay(day, dragDate) && hour >= dragRange.start && hour <= dragRange.end;
+                
+                const timeSlotClasses = [
+                  "h-12 border-b border-[var(--color-neutral-100)] dark:border-[var(--color-neutral-700)] cursor-pointer transition-colors relative",
+                  isInDragRange && "bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-900)]"
+                ].filter(Boolean).join(" ");
                 
                 return (
                   <div
                     key={hour}
-                    className={clsx(
-                      "h-12 border-b border-[var(--color-neutral-100)] dark:border-[var(--color-neutral-700)] cursor-pointer transition-colors relative",
-                      isInDragRange && "bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-900)]"
-                    )}
+                    className={timeSlotClasses}
                     onMouseDown={() => handleMouseDown(day, hour)}
                     onMouseEnter={() => handleMouseEnter(hour)}
                     onMouseUp={() => handleMouseUp(hour)}
                     aria-label={`Time slot: ${formatDate(new Date(new Date().setHours(hour, 0, 0, 0)), 'ha')}. Drag to create event.`}
                   >
-                    {/* Drag preview overlay */}
                     {isInDragRange && (
                       <div className="absolute inset-1 bg-[var(--color-primary-200)] dark:bg-[var(--color-primary-800)] rounded border border-[var(--color-primary-300)] dark:border-[var(--color-primary-600)] z-0" />
                     )}
@@ -295,11 +302,10 @@ export const WeekView: React.FC<WeekViewProps> = ({
                 );
               })}
               
-              {/* Events Container for this day */}
               <div className="absolute inset-0 pointer-events-none">
                 <div className="relative h-full" style={{ height: `${timeSlots.length * HOUR_HEIGHT}px` }}>
-                  {dayEventsWithOverlap[dayIndex]?.map(eventWithPosition => 
-                    renderEvent(eventWithPosition, dayIndex)
+                  {dayEventsWithOverlap[weekDays.indexOf(day)]?.map(eventWithPosition => 
+                    renderEvent(eventWithPosition)
                   )}
                 </div>
               </div>
@@ -307,7 +313,6 @@ export const WeekView: React.FC<WeekViewProps> = ({
           ))}
         </div>
 
-        {/* Drag Instruction Overlay */}
         {isDragging && (
           <div className="absolute inset-0 bg-black bg-opacity-10 flex items-center justify-center z-20 pointer-events-none">
             <div className="bg-white dark:bg-[var(--color-neutral-800)] rounded-lg px-4 py-2 shadow-lg border border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)]">
@@ -319,7 +324,6 @@ export const WeekView: React.FC<WeekViewProps> = ({
         )}
       </div>
 
-      {/* Instructions Footer */}
       <div className="bg-[var(--color-neutral-100)] dark:bg-[var(--color-neutral-700)] px-4 py-2 border-t border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)]">
         <div className="text-xs text-[var(--color-neutral-500)] dark:text-[var(--color-neutral-400)] text-center space-y-1">
           <div>
@@ -333,3 +337,4 @@ export const WeekView: React.FC<WeekViewProps> = ({
     </div>
   );
 };
+

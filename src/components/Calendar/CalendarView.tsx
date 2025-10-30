@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { CalendarViewProps, CalendarViewType } from './CalendarView.types';
+import { CalendarViewProps, CalendarEvent } from './CalendarView.types';
 import { useCalendar } from '@/hooks/useCalendar';
 import { MonthView } from './MonthView';
 import { EventModal } from './EventModal';
@@ -8,12 +8,28 @@ import { formatDate } from '@/utils/date.utils';
 import { WeekView } from './WeekView';
 import { MobileListView } from './MobileListView';
 
+interface MultiDayEventData {
+  id: string;
+  title: string;
+  description: string;
+  startDate: Date;
+  endDate: Date;
+  color: string;
+}
+
+interface TimeRangeEventData {
+  id: string;
+  title: string;
+  startDate: Date;
+  endDate: Date;
+  color: string;
+}
+
 export const CalendarView: React.FC<CalendarViewProps> = ({
   events,
   onEventAdd,
   onEventUpdate,
   onEventDelete,
-  initialView = 'month',
   initialDate = new Date()
 }) => {
   const {
@@ -38,32 +54,29 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     openCreateModal(date);
   };
 
-  const handleEventClick = (event: any) => {
+  const handleEventClick = (event: CalendarEvent) => {
     openEditModal(event);
   };
 
-  const handleSaveEvent = (event: any) => {
+  const handleSaveEvent = (eventData: CalendarEvent) => {
     if (modalMode === 'create') {
-      onEventAdd(event);
-    } else {
-      onEventUpdate(event.id, event);
+      onEventAdd(eventData);
+    } else if (eventData.id) {
+      onEventUpdate(eventData.id, eventData);
     }
   };
 
-  // Handle range selection for multi-day events
   const handleRangeSelect = useCallback((dates: Date[]) => {
     setSelectedRange(dates);
-    console.log('Selected date range:', dates);
     
-    // Automatically create a multi-day event when range is selected
     if (dates.length > 1) {
       const startDate = new Date(dates[0]);
-      startDate.setHours(9, 0, 0, 0); // Default to 9 AM
+      startDate.setHours(9, 0, 0, 0);
       
       const endDate = new Date(dates[dates.length - 1]);
-      endDate.setHours(17, 0, 0, 0); // Default to 5 PM
+      endDate.setHours(17, 0, 0, 0);
       
-      const multiDayEvent: any = {
+      const multiDayEvent: MultiDayEventData = {
         id: `range-${Date.now()}`,
         title: 'Multi-day Event',
         description: `Event spanning ${dates.length} days`,
@@ -72,29 +85,43 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         color: '#8b5cf6',
       };
       
-      openEditModal(multiDayEvent);
+      openEditModal(multiDayEvent as CalendarEvent);
     }
   }, [openEditModal]);
 
-  // Global keyboard shortcuts
   const handleGlobalKeyDown = (e: React.KeyboardEvent) => {
-    // Ctrl/Cmd + T to go to today
     if ((e.ctrlKey || e.metaKey) && e.key === 't') {
       e.preventDefault();
       goToToday();
     }
     
-    // Escape to close modal if open
     if (e.key === 'Escape' && isModalOpen) {
       e.preventDefault();
       closeModal();
     }
 
-    // Escape to clear selection range
     if (e.key === 'Escape' && selectedRange.length > 0) {
       e.preventDefault();
       setSelectedRange([]);
     }
+  };
+
+  const handleWeekViewEventCreate = (date: Date, startHour: number, endHour: number) => {
+    const startDate = new Date(date);
+    startDate.setHours(startHour, 0, 0, 0);
+    
+    const endDate = new Date(date);
+    endDate.setHours(endHour, 0, 0, 0);
+    
+    const newEvent: TimeRangeEventData = {
+      id: `temp-${Date.now()}`,
+      title: 'New Event',
+      startDate: startDate,
+      endDate: endDate,
+      color: '#3b82f6',
+    };
+    
+    openEditModal(newEvent as CalendarEvent);
   };
 
   return (
@@ -105,7 +132,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       role="application"
       aria-label="Calendar application"
     >
-      {/* Compact Navigation Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2">
@@ -189,7 +215,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         </div>
       </div>
 
-      {/* Range Selection Indicator */}
       {selectedRange.length > 0 && (
         <div className="mb-4 p-3 bg-[var(--color-primary-50)] dark:bg-[var(--color-primary-900)] rounded-lg border border-[var(--color-primary-200)] dark:border-[var(--color-primary-700)]">
           <div className="flex items-center justify-between">
@@ -209,7 +234,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         </div>
       )}
 
-      {/* Calendar Views */}
       <div 
         id="calendar-content"
         role="tabpanel"
@@ -233,24 +257,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             selectedDate={selectedDate}
             onDateClick={handleDateClick}
             onEventClick={handleEventClick}
-            onEventCreate={(date, startHour, endHour) => {
-              const startDate = new Date(date);
-              startDate.setHours(startHour, 0, 0, 0);
-              
-              const endDate = new Date(date);
-              endDate.setHours(endHour, 0, 0, 0);
-              
-              // Create a sample event with the selected time range
-              const newEvent: any = {
-                id: `temp-${Date.now()}`,
-                title: 'New Event',
-                startDate: startDate,
-                endDate: endDate,
-                color: '#3b82f6',
-              };
-              
-              openEditModal(newEvent);
-            }}
+            onEventCreate={handleWeekViewEventCreate}
           />
         )}
 
@@ -265,7 +272,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         )}
       </div>
 
-      {/* Instructions Footer */}
       <div className="mt-4 p-3 bg-[var(--color-neutral-50)] dark:bg-[var(--color-neutral-700)] rounded-lg border border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)]">
         <div className="text-xs text-[var(--color-neutral-600)] dark:text-[var(--color-neutral-400)] text-center space-y-2">
           <div>

@@ -12,7 +12,7 @@ interface VirtualizedEventListProps {
   height?: number;
 }
 
-const EVENT_ITEM_HEIGHT = 80; // Fixed height for each event item
+const EVENT_ITEM_HEIGHT = 80;
 
 export const VirtualizedEventList: React.FC<VirtualizedEventListProps> = ({
   events,
@@ -21,7 +21,6 @@ export const VirtualizedEventList: React.FC<VirtualizedEventListProps> = ({
   onDateClick,
   height = 400,
 }) => {
-  // Group events by date for better organization
   const eventsByDate = useMemo(() => {
     const grouped: { [key: string]: CalendarEvent[] } = {};
     
@@ -36,20 +35,17 @@ export const VirtualizedEventList: React.FC<VirtualizedEventListProps> = ({
     return grouped;
   }, [events]);
 
-  // Flatten for virtualization with date headers
   const virtualizedItems = useMemo(() => {
     const items: Array<{ type: 'date'; date: Date } | { type: 'event'; event: CalendarEvent; date: Date }> = [];
     
     Object.keys(eventsByDate)
-      .sort() // Sort dates chronologically
+      .sort()
       .forEach(dateKey => {
         const date = new Date(dateKey);
         const dateEvents = eventsByDate[dateKey];
         
-        // Add date header
         items.push({ type: 'date', date });
         
-        // Add events for this date
         dateEvents.forEach(event => {
           items.push({ type: 'event', event, date });
         });
@@ -69,7 +65,8 @@ export const VirtualizedEventList: React.FC<VirtualizedEventListProps> = ({
     overscan: 5,
   });
 
-  const renderItem = (item: typeof virtualizedItems[0], index: number) => {
+  const renderItem = (item: typeof virtualizedItems[0]) => {
+    const index = virtualizedItems.indexOf(item);
     const style = getItemStyle(index);
 
     if (item.type === 'date') {
@@ -166,12 +163,11 @@ export const VirtualizedEventList: React.FC<VirtualizedEventListProps> = ({
       aria-label="Event list"
     >
       <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
-        {visibleItems.map((item, index) => 
-          renderItem(item, virtualizedItems.indexOf(item))
+        {visibleItems.map((item) => 
+          renderItem(item)
         )}
       </div>
       
-      {/* Empty state */}
       {virtualizedItems.length === 0 && (
         <div className="flex items-center justify-center h-full text-[var(--color-neutral-500)] dark:text-[var(--color-neutral-400)]">
           <div className="text-center">

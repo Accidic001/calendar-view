@@ -19,7 +19,6 @@ export const MobileListView: React.FC<MobileListViewProps> = ({
 }) => {
   const [swipedEventId, setSwipedEventId] = useState<string | null>(null);
 
-  // Group events by date
   const eventsByDate = events.reduce((acc, event) => {
     const dateKey = format(event.startDate, 'yyyy-MM-dd');
     if (!acc[dateKey]) {
@@ -58,7 +57,6 @@ export const MobileListView: React.FC<MobileListViewProps> = ({
 
   return (
     <div className="h-[600px] overflow-y-auto bg-white dark:bg-[var(--color-neutral-800)] rounded-lg border border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)]">
-      {/* Header */}
       <div className="sticky top-0 bg-white dark:bg-[var(--color-neutral-800)] border-b border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)] p-4 z-10">
         <h2 className="text-lg font-semibold text-[var(--color-neutral-900)] dark:text-[var(--color-neutral-100)]">
           Upcoming Events ({events.length})
@@ -68,7 +66,6 @@ export const MobileListView: React.FC<MobileListViewProps> = ({
         </p>
       </div>
 
-      {/* Events List */}
       <div className="divide-y divide-[var(--color-neutral-100)] dark:divide-[var(--color-neutral-700)]">
         {sortedDates.map(date => (
           <DateSection
@@ -89,7 +86,6 @@ export const MobileListView: React.FC<MobileListViewProps> = ({
   );
 };
 
-// Date Section Component
 interface DateSectionProps {
   date: Date;
   events: CalendarEvent[];
@@ -115,7 +111,6 @@ const DateSection: React.FC<DateSectionProps> = ({
 }) => {
   return (
     <div className={`p-4 ${isSelected ? 'bg-[var(--color-primary-50)] dark:bg-[var(--color-primary-900)]' : 'bg-white dark:bg-[var(--color-neutral-800)]'}`}>
-      {/* Date Header */}
       <button
         onClick={() => onDateSelect(date)}
         className={`w-full text-left mb-3 p-3 rounded-lg transition-colors ${
@@ -149,7 +144,6 @@ const DateSection: React.FC<DateSectionProps> = ({
         </div>
       </button>
 
-      {/* Events for this date */}
       <div className="space-y-2">
         {events
           .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
@@ -169,7 +163,6 @@ const DateSection: React.FC<DateSectionProps> = ({
   );
 };
 
-// Swipeable Event Item Component
 interface SwipeableEventItemProps {
   event: CalendarEvent;
   isSwiped: boolean;
@@ -201,18 +194,15 @@ const SwipeableEventItem: React.FC<SwipeableEventItemProps> = ({
     const currentTouch = e.touches[0].clientX;
     const difference = touchStart - currentTouch;
     
-    // Only allow swipe left (positive difference)
     if (difference > 0) {
-      setTouchOffset(Math.min(difference, 80)); // Max swipe distance
+      setTouchOffset(Math.min(difference, 80));
     }
   };
 
   const handleTouchEnd = () => {
     if (touchOffset > 40) {
-      // Swipe threshold reached - show delete confirmation
       setTouchOffset(80);
     } else {
-      // Reset position
       setTouchOffset(0);
       onSwipeEnd();
     }
@@ -225,11 +215,6 @@ const SwipeableEventItem: React.FC<SwipeableEventItemProps> = ({
     onSwipeEnd();
   };
 
-  const handleResetSwipe = () => {
-    setTouchOffset(0);
-    onSwipeEnd();
-  };
-
   return (
     <div 
       className="relative group"
@@ -237,7 +222,6 @@ const SwipeableEventItem: React.FC<SwipeableEventItemProps> = ({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Swipe Delete Area */}
       {touchOffset > 0 && (
         <div 
           className="absolute inset-y-0 right-0 flex items-center justify-end pr-4 bg-[var(--color-error-500)] rounded-lg transition-all duration-200"
@@ -254,7 +238,6 @@ const SwipeableEventItem: React.FC<SwipeableEventItemProps> = ({
         </div>
       )}
 
-      {/* Event Card */}
       <div
         onClick={() => onEventClick(event)}
         className={`bg-white dark:bg-[var(--color-neutral-700)] border border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-600)] rounded-lg p-3 cursor-pointer transition-all duration-200 ${
@@ -294,7 +277,6 @@ const SwipeableEventItem: React.FC<SwipeableEventItemProps> = ({
         )}
       </div>
 
-      {/* Swipe Hint */}
       {!isSwiped && touchOffset === 0 && (
         <div className="absolute inset-y-0 right-2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <div className="text-[var(--color-neutral-400)] dark:text-[var(--color-neutral-500)] text-xs">

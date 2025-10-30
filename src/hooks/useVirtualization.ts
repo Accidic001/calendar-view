@@ -29,6 +29,7 @@ export const useVirtualization = <T>(
   });
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const isInitialized = useRef(false);
 
   const calculateVisibleItems = useCallback(() => {
     const startIndex = Math.max(0, Math.floor(state.offsetY / itemHeight) - overscan);
@@ -54,12 +55,10 @@ export const useVirtualization = <T>(
     }));
   }, []);
 
-  // Get visible items for rendering
   const getVisibleItems = useCallback((): T[] => {
     return items.slice(state.startIndex, state.endIndex);
   }, [items, state.startIndex, state.endIndex]);
 
-  // Get item position for absolute positioning
   const getItemStyle = useCallback((index: number): React.CSSProperties => {
     return {
       position: 'absolute',
@@ -71,12 +70,18 @@ export const useVirtualization = <T>(
     };
   }, [itemHeight]);
 
-  // Initialize and update on config changes
   useEffect(() => {
-    calculateVisibleItems();
-  }, [calculateVisibleItems, items.length]);
+    if (isInitialized.current) return;
+    
+    // Use setTimeout to avoid calling setState synchronously in useEffect
+    const timer = setTimeout(() => {
+      calculateVisibleItems();
+      isInitialized.current = true;
+    }, 0);
 
-  // Add scroll listener
+    return () => clearTimeout(timer);
+  }, [calculateVisibleItems]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -85,6 +90,12 @@ export const useVirtualization = <T>(
     return () => container.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
+  const scrollToIndex = useCallback((index: number) => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = index * itemHeight;
+    }
+  }, [itemHeight]);
+
   return {
     containerRef,
     visibleItems: getVisibleItems(),
@@ -92,10 +103,6 @@ export const useVirtualization = <T>(
     endIndex: state.endIndex,
     totalHeight: state.totalHeight,
     getItemStyle,
-    scrollToIndex: useCallback((index: number) => {
-      if (containerRef.current) {
-        containerRef.current.scrollTop = index * itemHeight;
-      }
-    }, [itemHeight]),
+    scrollToIndex,
   };
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CalendarView } from '@/components/Calendar/CalendarView';
 import { CalendarEvent } from '@/components/Calendar/CalendarView.types';
 
@@ -10,7 +10,7 @@ const sampleEvents: CalendarEvent[] = [
     id: 'evt-1',
     title: 'Team Standup',
     description: 'Daily sync with the team',
-    startDate: new Date(2024, 11, 16, 9, 0), // Changed to same day for testing
+    startDate: new Date(2024, 11, 16, 9, 0),
     endDate: new Date(2024, 11, 16, 9, 30),
     color: '#3b82f6',
     category: 'meeting',
@@ -19,7 +19,7 @@ const sampleEvents: CalendarEvent[] = [
     id: 'evt-2',
     title: 'Design Review',
     description: 'Review new component designs',
-    startDate: new Date(2024, 11, 16, 9, 15), // Overlaps with standup
+    startDate: new Date(2024, 11, 16, 9, 15),
     endDate: new Date(2024, 11, 16, 10, 0),
     color: '#10b981',
     category: 'design',
@@ -28,7 +28,7 @@ const sampleEvents: CalendarEvent[] = [
     id: 'evt-3',
     title: 'Client Call',
     description: 'Weekly client checkin',
-    startDate: new Date(2024, 11, 16, 9, 45), // Overlaps with both
+    startDate: new Date(2024, 11, 16, 9, 45),
     endDate: new Date(2024, 11, 16, 10, 30),
     color: '#f59e0b',
     category: 'meeting',
@@ -37,7 +37,7 @@ const sampleEvents: CalendarEvent[] = [
     id: 'evt-4',
     title: 'Lunch Break',
     description: 'Lunch time',
-    startDate: new Date(2024, 11, 16, 12, 0), // No overlap
+    startDate: new Date(2024, 11, 16, 12, 0),
     endDate: new Date(2024, 11, 16, 13, 0),
     color: '#ef4444',
     category: 'personal',
@@ -47,16 +47,29 @@ const sampleEvents: CalendarEvent[] = [
 export default function Home() {
   const [events, setEvents] = useState<CalendarEvent[]>(sampleEvents);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const isInitialized = useRef(false);
 
-  // Initialize theme
+  // Initialize theme - fixed useEffect
   useEffect(() => {
+    if (isInitialized.current) return;
+    
     const savedTheme = localStorage.getItem('theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
-    if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
-      setIsDarkMode(true);
-      document.documentElement.classList.add('dark');
+    const shouldBeDark = savedTheme === 'dark' || (!savedTheme && systemPrefersDark);
+    
+    // Batch the state update and DOM manipulation
+    if (shouldBeDark) {
+      // Use setTimeout to avoid calling setState synchronously in useEffect
+      const timer = setTimeout(() => {
+        setIsDarkMode(true);
+        document.documentElement.classList.add('dark');
+      }, 0);
+      
+      return () => clearTimeout(timer);
     }
+    
+    isInitialized.current = true;
   }, []);
 
   const toggleDarkMode = () => {
@@ -73,8 +86,12 @@ export default function Home() {
   };
 
   const handleEventAdd = (event: CalendarEvent) => {
-    setEvents(prev => [...prev, event]);
-    console.log('Event added:', event);
+    const newEvent: CalendarEvent = {
+      ...event,
+      id: `evt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    };
+    setEvents(prev => [...prev, newEvent]);
+    console.log('Event added:', newEvent);
   };
 
   const handleEventUpdate = (id: string, updates: Partial<CalendarEvent>) => {
@@ -93,7 +110,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-white dark:bg-[var(--color-neutral-900)] transition-colors duration-300 flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl mx-auto"> {/* Reduced from max-w-5xl */}
+      <div className="w-full max-w-4xl mx-auto">
         {/* Compact Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">

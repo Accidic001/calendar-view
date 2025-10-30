@@ -21,30 +21,12 @@ export const useMultiSelect = ({ onRangeSelect }: UseMultiSelectProps) => {
 
   const shiftPressedRef = useRef(false);
 
-  // Handle shift key events
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Shift') {
-      shiftPressedRef.current = true;
-    }
-  }, []);
-
-  const handleKeyUp = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Shift') {
-      shiftPressedRef.current = false;
-      // End selection when shift is released
-      if (state.isSelecting) {
-        endSelection();
-      }
-    }
-  }, [state.isSelecting]);
-
   // Get all dates between start and end (inclusive)
   const getDatesInRange = useCallback((start: Date, end: Date): Date[] => {
     const dates: Date[] = [];
     let current = new Date(start);
     let endDate = new Date(end);
     
-    // Ensure start is before end
     if (current > endDate) {
       [current, endDate] = [endDate, current];
     }
@@ -56,6 +38,36 @@ export const useMultiSelect = ({ onRangeSelect }: UseMultiSelectProps) => {
     
     return dates;
   }, []);
+
+  // Declare endSelection first to avoid usage before declaration
+  const endSelection = useCallback(() => {
+    if (!state.isSelecting) return;
+    
+    setState(prev => ({
+      ...prev,
+      isSelecting: false,
+    }));
+    
+    if (state.selectedRange.length > 1) {
+      onRangeSelect(state.selectedRange);
+    }
+  }, [state.isSelecting, state.selectedRange, onRangeSelect]);
+
+  // Now declare handleKeyUp that uses endSelection
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Shift') {
+      shiftPressedRef.current = true;
+    }
+  }, []);
+
+  const handleKeyUp = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Shift') {
+      shiftPressedRef.current = false;
+      if (state.isSelecting) {
+        endSelection();
+      }
+    }
+  }, [state.isSelecting, endSelection]); // Added endSelection dependency
 
   const startSelection = useCallback((date: Date) => {
     if (!shiftPressedRef.current) return;
@@ -80,20 +92,6 @@ export const useMultiSelect = ({ onRangeSelect }: UseMultiSelectProps) => {
     }));
   }, [state.isSelecting, state.selectionStart, getDatesInRange]);
 
-  const endSelection = useCallback(() => {
-    if (!state.isSelecting) return;
-    
-    setState(prev => ({
-      ...prev,
-      isSelecting: false,
-    }));
-    
-    // Call the callback with the final selection
-    if (state.selectedRange.length > 1) {
-      onRangeSelect(state.selectedRange);
-    }
-  }, [state.isSelecting, state.selectedRange, onRangeSelect]);
-
   const cancelSelection = useCallback(() => {
     setState({
       isSelecting: false,
@@ -103,7 +101,6 @@ export const useMultiSelect = ({ onRangeSelect }: UseMultiSelectProps) => {
     });
   }, []);
 
-  // Add global event listeners
   const initialize = useCallback(() => {
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);
@@ -116,6 +113,11 @@ export const useMultiSelect = ({ onRangeSelect }: UseMultiSelectProps) => {
     document.removeEventListener('mouseup', endSelection);
   }, [handleKeyDown, handleKeyUp, endSelection]);
 
+  // Create a separate function to check shift state that can be called in event handlers
+  const isShiftPressed = useCallback(() => {
+    return shiftPressedRef.current;
+  }, []);
+
   return {
     isSelecting: state.isSelecting,
     selectionStart: state.selectionStart,
@@ -127,6 +129,6 @@ export const useMultiSelect = ({ onRangeSelect }: UseMultiSelectProps) => {
     cancelSelection,
     initialize,
     cleanup,
-    isShiftPressed: shiftPressedRef.current,
+    isShiftPressed, // Return function instead of ref.current
   };
 };

@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { CalendarEvent } from './CalendarView.types';
 import { CalendarCell } from './CalendarCell';
-import { getCalendarGrid, formatDate, isSameDay } from '@/utils/date.utils';
+import { getCalendarGrid, isSameDay } from '@/utils/date.utils';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { VirtualizedEventList } from './VirtualizedEventList';
@@ -15,7 +15,6 @@ interface MonthViewProps {
   onRangeSelect: (dates: Date[]) => void;
 }
 
-// Threshold to switch to virtualized list view
 const EVENT_COUNT_THRESHOLD = 50;
 
 export const MonthView: React.FC<MonthViewProps> = ({
@@ -30,15 +29,23 @@ export const MonthView: React.FC<MonthViewProps> = ({
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   
   const [showListView, setShowListView] = useState(false);
+  const listViewInitialized = useRef(false);
 
-  // Auto-switch to list view when event count is high
-  useEffect(() => {
-    if (events.length > EVENT_COUNT_THRESHOLD) {
-      setShowListView(true);
-    }
-  }, [events.length]);
+  // Declare focus handlers first
+  const handleDateFocus = useCallback(() => {
+    // Focus logic will be implemented when useKeyboardNavigation provides the function
+  }, []);
 
-  // Keyboard navigation
+  const handleEventFocus = useCallback(() => {
+    // Focus logic will be implemented when useKeyboardNavigation provides the function
+  }, []);
+
+  const handleEventAction = useCallback((eventId: string) => {
+    const event = events.find(e => e.id === eventId);
+    if (event) onEventClick(event);
+  }, [events, onEventClick]);
+
+  // Now initialize useKeyboardNavigation with the handlers
   const {
     focusedDate,
     focusedEventId,
@@ -49,29 +56,45 @@ export const MonthView: React.FC<MonthViewProps> = ({
   } = useKeyboardNavigation({
     currentDate,
     events,
-    onDateSelect: (date: Date) => {},
-    onEventSelect: (eventId: string) => {},
-    onEventAction: (eventId: string) => {
-      const event = events.find(e => e.id === eventId);
-      if (event) onEventClick(event);
-    },
+    onDateSelect: handleDateFocus,
+    onEventSelect: handleEventFocus,
+    onEventAction: handleEventAction,
   });
 
-  // Multi-select
+  // Update the handlers to use the actual focus functions
+  const updatedHandleDateFocus = useCallback((date: Date) => {
+    focusDate(date);
+  }, [focusDate]);
+
+  const updatedHandleEventFocus = useCallback((eventId: string) => {
+    focusEvent(eventId);
+  }, [focusEvent]);
+
+  useEffect(() => {
+    if (listViewInitialized.current) return;
+
+    // Use setTimeout to avoid calling setState synchronously in useEffect
+    const timer = setTimeout(() => {
+      if (events.length > EVENT_COUNT_THRESHOLD) {
+        setShowListView(true);
+        listViewInitialized.current = true;
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [events.length]);
+
   const {
     isSelecting,
     selectedRange,
     startSelection,
     updateSelection,
-    endSelection,
-    cancelSelection,
     initialize: initializeMultiSelect,
     cleanup: cleanupMultiSelect,
   } = useMultiSelect({
     onRangeSelect,
   });
 
-  // Initialize multi-select
   useEffect(() => {
     initializeMultiSelect();
     return () => {
@@ -89,10 +112,6 @@ export const MonthView: React.FC<MonthViewProps> = ({
     focusEvent(event.id);
   }, [onEventClick, focusEvent]);
 
-  const handleEventFocus = useCallback((eventId: string) => {
-    focusEvent(eventId);
-  }, [focusEvent]);
-
   const handleSelectionStart = useCallback((date: Date) => {
     startSelection(date);
   }, [startSelection]);
@@ -101,14 +120,12 @@ export const MonthView: React.FC<MonthViewProps> = ({
     updateSelection(date);
   }, [updateSelection]);
 
-  // Check if a date is in the selection range
   const isDateInSelectionRange = useCallback((date: Date): boolean => {
     return selectedRange.some(selectedDate => isSameDay(selectedDate, date));
   }, [selectedRange]);
 
-  // Performance optimization: Memoize event grouping
   const eventsByDate = useMemo(() => {
-    const grouped: { [key: string]: CalendarEvent[] } = {};
+    const grouped: Record<string, CalendarEvent[]> = {};
     events.forEach(event => {
       const dateKey = new Date(event.startDate).toDateString();
       if (!grouped[dateKey]) grouped[dateKey] = [];
@@ -117,10 +134,17 @@ export const MonthView: React.FC<MonthViewProps> = ({
     return grouped;
   }, [events]);
 
-  // Get events for a specific date (memoized)
   const getEventsForDate = useCallback((date: Date): CalendarEvent[] => {
     return eventsByDate[date.toDateString()] || [];
   }, [eventsByDate]);
+
+  const handleShowCalendar = useCallback(() => {
+    setShowListView(false);
+  }, []);
+
+  const handleShowListView = useCallback(() => {
+    setShowListView(true);
+  }, []);
 
   if (showListView) {
     return (
@@ -136,7 +160,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
               </p>
             </div>
             <button
-              onClick={() => setShowListView(false)}
+              onClick={handleShowCalendar}
               className="px-3 py-1 text-sm bg-[var(--color-primary-500)] text-white rounded-lg hover:bg-[var(--color-primary-600)] transition-colors"
             >
               Show Calendar
@@ -164,7 +188,6 @@ export const MonthView: React.FC<MonthViewProps> = ({
       role="application"
       aria-label="Calendar month view"
     >
-      {/* View Toggle for Large Datasets */}
       {events.length > EVENT_COUNT_THRESHOLD && (
         <div className="p-3 border-b border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)] bg-[var(--color-primary-50)] dark:bg-[var(--color-primary-900)]">
           <div className="flex items-center justify-between text-sm">
@@ -172,7 +195,7 @@ export const MonthView: React.FC<MonthViewProps> = ({
               Large dataset detected ({events.length} events)
             </span>
             <button
-              onClick={() => setShowListView(true)}
+              onClick={handleShowListView}
               className="px-3 py-1 text-xs bg-[var(--color-primary-500)] text-white rounded hover:bg-[var(--color-primary-600)] transition-colors"
             >
               Switch to List View
@@ -181,7 +204,6 @@ export const MonthView: React.FC<MonthViewProps> = ({
         </div>
       )}
 
-      {/* Professional Weekday Headers */}
       <div className="grid grid-cols-7 border-b border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)] bg-[var(--color-neutral-50)] dark:bg-[var(--color-neutral-700)]">
         {weekDays.map(day => (
           <div 
@@ -194,9 +216,8 @@ export const MonthView: React.FC<MonthViewProps> = ({
         ))}
       </div>
 
-      {/* Calendar Grid */}
       <div className="grid grid-cols-7">
-        {calendarGrid.map((date, index) => (
+        {calendarGrid.map((date) => (
           <CalendarCell
             key={date.toISOString()}
             date={date}
@@ -208,15 +229,14 @@ export const MonthView: React.FC<MonthViewProps> = ({
             focusedEventId={focusedEventId}
             onClick={handleDateClick}
             onEventClick={handleEventClick}
-            onFocus={focusDate}
-            onEventFocus={handleEventFocus}
+            onFocus={updatedHandleDateFocus}
+            onEventFocus={updatedHandleEventFocus}
             onSelectionStart={handleSelectionStart}
             onSelectionUpdate={handleSelectionUpdate}
           />
         ))}
       </div>
 
-      {/* Instructions Footer */}
       <div className="bg-[var(--color-neutral-50)] dark:bg-[var(--color-neutral-700)] px-4 py-2 border-t border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-700)]">
         <div className="text-xs text-[var(--color-neutral-500)] dark:text-[var(--color-neutral-400)] text-center space-y-1">
           <div>

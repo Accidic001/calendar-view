@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Modal } from '@/components/primitives/Modal';
 import { Button } from '@/components/primitives/Button';
 import { CalendarEvent } from './CalendarView.types';
@@ -26,12 +26,12 @@ const categoryOptions = [
 ];
 
 const colorOptions = [
-  '#3b82f6', // blue
-  '#10b981', // green
-  '#f59e0b', // yellow
-  '#ef4444', // red
-  '#8b5cf6', // purple
-  '#ec4899', // pink
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#8b5cf6',
+  '#ec4899',
 ];
 
 export const EventModal: React.FC<EventModalProps> = ({
@@ -52,25 +52,53 @@ export const EventModal: React.FC<EventModalProps> = ({
     category: ''
   });
   const [errors, setErrors] = useState<string[]>([]);
+  const isInitialized = useRef(false);
 
   useEffect(() => {
-    if (mode === 'edit' && event) {
-      setFormData(event);
-    } else if (mode === 'create' && selectedDate) {
-      const startDate = new Date(selectedDate);
-      const endDate = new Date(selectedDate);
-      endDate.setHours(endDate.getHours() + 1);
-      
-      setFormData(prev => ({
-        ...prev,
-        startDate,
-        endDate,
-        title: '',
-        description: '',
-        color: colorOptions[0]
-      }));
+    if (!isOpen) {
+      isInitialized.current = false;
+      return;
     }
-  }, [mode, event, selectedDate]);
+
+    if (isInitialized.current) return;
+
+    // Use setTimeout to avoid calling setState synchronously in useEffect
+    const timer = setTimeout(() => {
+      if (mode === 'edit' && event) {
+        setFormData(event);
+      } else if (mode === 'create' && selectedDate) {
+        const startDate = new Date(selectedDate);
+        const endDate = new Date(selectedDate);
+        endDate.setHours(endDate.getHours() + 1);
+        
+        setFormData(prev => ({
+          ...prev,
+          startDate,
+          endDate,
+          title: '',
+          description: '',
+          color: colorOptions[0]
+        }));
+      }
+
+      isInitialized.current = true;
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [isOpen, mode, event, selectedDate]);
+
+  const resetForm = useCallback(() => {
+    setFormData({
+      title: '',
+      description: '',
+      startDate: selectedDate || new Date(),
+      endDate: new Date(),
+      color: colorOptions[0],
+      category: ''
+    });
+    setErrors([]);
+    isInitialized.current = false;
+  }, [selectedDate]);
 
   const handleSave = useCallback(() => {
     const validationErrors = validateEvent(formData);
@@ -91,21 +119,27 @@ export const EventModal: React.FC<EventModalProps> = ({
     };
 
     onSave(eventData);
+    resetForm();
     onClose();
-    setErrors([]);
-  }, [formData, mode, event, onSave, onClose]);
+  }, [formData, mode, event, onSave, onClose, resetForm]);
 
   const handleDelete = useCallback(() => {
     if (event && onDelete) {
       onDelete(event.id);
+      resetForm();
       onClose();
     }
-  }, [event, onDelete, onClose]);
+  }, [event, onDelete, onClose, resetForm]);
+
+  const handleClose = useCallback(() => {
+    resetForm();
+    onClose();
+  }, [resetForm, onClose]);
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title={mode === 'create' ? 'Create Event' : 'Edit Event'}
     >
       <div className="space-y-6">
@@ -224,7 +258,7 @@ export const EventModal: React.FC<EventModalProps> = ({
           <div className="flex gap-3">
             <Button 
               variant="secondary" 
-              onClick={onClose}
+              onClick={handleClose}
               className="min-w-[80px]"
             >
               Cancel

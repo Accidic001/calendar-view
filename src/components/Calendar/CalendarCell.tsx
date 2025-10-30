@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
 import { CalendarEvent } from './CalendarView.types';
-import { isToday, isCurrentMonth, formatDate, isSameDay } from '@/utils/date.utils';
+import { isToday, isCurrentMonth, formatDate} from '@/utils/date.utils';
 import { getEventsForDay } from '@/utils/event.utils';
 
 interface CalendarCellProps {
